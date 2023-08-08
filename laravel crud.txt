@@ -1,0 +1,109 @@
+1. xampp server - Apache & MySQL
+2. laravel new ajax-crud-main
+3. php artisan make:model Employee -mc
+4. php artisan make:migration create_employees_table
+5. php artisan make:controller EmployeeController
+6. Schema::create('employees', function (Blueprint $table) {
+            $table->id();
+            $table->string('fullname');
+            $table->string('email')->unique();
+            $table->bigInteger('phone');
+            $table->enum('gender', ['Male', 'Female']);
+            $table->string('hobby');
+            $table->string('course');
+            $table->text('profile_image');
+            $table->timestamps();
+});
+
+7. php artisan migrate
+
+8. Employee.php - Model
+	protected $fillable = [
+        'fullname',
+        'email',
+        'phone',
+        'gender',
+        'hobby',
+        'course',
+        'profile_image'
+    ];
+	
+9. composer require yajra/laravel-datatables-oracle
+
+10. config -> app.php
+
+
+
+
+Multi User Authentication
+
+composer require laravel/ui
+
+php artisan ui bootstrap
+
+npm install
+npm run dev
+
+php artisan ui:auth
+
+=> Now default login and register should work.
+
+create admins table for admin authentication.
+
+php artisan make:migration create_admins_table
+
+php artisan migrate
+
+Now create model called Admin for admin login, make sure it should be authenticable.
+php artisan make:model Admin	
+copy User model & paste it in Admin model - class Admin extends Authenticatable
+
+
+For Admin Login we will create seperate guards located in given location:
+    {yourRootDirectory}\config\auth.php ---> 'guards' & 'providers'
+	guards -->
+		'admin' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
+		
+	providers -->
+		'admin' => [
+            'driver' => 'eloquent',
+            'model' => App\Models\Admin::class,
+        ],
+
+php artisan make:controller AdminController
+
+Now define routes for admin in web.php file
+    {yourRootDirectory}\routes\web.php
+
+	Route::group(['prefix' => 'admin'], function() {
+		Route::group(['middleware' => 'admin.guest'], function(){
+			Route::view('/login','admin.login')->name('admin.login');
+			Route::post('/login',[App\Http\AdminController::class, 'authenticate'])->name('admin.auth');
+		});
+		
+		Route::group(['middleware' => 'admin.auth'], function(){
+			Route::get('/dashboard',[App\Http\DashboardController::class, 'dashboard'])->name('admin.dashboard');
+		});
+	});
+	
+We will create "AdminAuthenticate" middleware, where we will override "authenticate" method. 
+	<?php
+
+		namespace App\Http\Middleware;
+
+		use Illuminate\Auth\Middleware\Authenticate as Middleware;
+		use Illuminate\Http\Request;
+
+		class AdminAuthenticate extends Middleware
+		{
+			/**
+			 * Get the path the user should be redirected to when they are not authenticated.
+			 */
+			protected function redirectTo(Request $request): ?string
+			{
+				return $request->expectsJson() ? null : route('admin.login');
+			}
+		}
